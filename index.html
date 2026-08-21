@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Médicaments - App</title>
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* --- 1. Design Neumorphic de base et couleurs --- */
+:root {
+--bg-color: #ebf5ff;
+--light-shadow: #ffffff;
+--dark-shadow: #c9d7e5;
+--main-color: #4CAF50;
+--text-color: #333;
+}
+
+
+/* Mode Sombre */
+    .dark-mode {
+        --bg-color: #1e1e1e;
+        --light-shadow: #2a2a2a;
+        --dark-shadow: #121212;
+        --main-color: #76ff7a;
+        --text-color: #f1f1f1;
+    }
+
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        /* Priorité à Roboto pour le français */
+        font-family: 'Roboto', 'Cairo', sans-serif; 
+       -webkit-tap-highlight-color: transparent;
+       -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        padding-top: 70px;
+        padding-bottom: 60px;
+        direction: ltr; /* Changement vers LTR pour le français */
+        overflow-x: hidden;
+        touch-action: pan-y;
+    }
+
+    /* --- 2. Composant Neumorphic --- */
+    .neumorphic {
+        background: var(--bg-color);
+        border-radius: 12px;
+        box-shadow: 
+            6px 6px 12px var(--dark-shadow),
+            -6px -6px 12px var(--light-shadow);
+        transition: all 0.2s ease;
+    }
+    
+    .neumorphic-inset {
+        background: var(--bg-color);
+        border-radius: 12px;
+        box-shadow: 
+            inset 4px 4px 8px var(--dark-shadow),
+            inset -4px -4px 8px var(--light-shadow); 
+    }
+
+    /* --- 3. Barre de titre/Recherche mise à jour --- */
+    #search-header {
+        position: fixed; top: 0; right: 0; left: 0; z-index: 101; height: 70px;
+        background-color: var(--bg-color); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        display: flex; align-items: center; padding: 0 20px; 
+        overflow: hidden; 
+    }
+    
+    .header-content { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        width: 100%; height: 100%; 
+        position: absolute; left: 0; /* Changement RTL->LTR */
+        transform: translateX(0); 
+        opacity: 1; 
+        transition: all 0.3s ease-in-out; 
+        padding: 0 20px; 
+    }
+
+    #header-title { 
+        font-size: 1.5em; 
+        font-weight: bold;
+        text-align: left; /* Changement RTL->LTR */
+        flex-grow: 1; 
+    }
+    
+    #open-search-icon {
+        font-size: 28px;
+        color: var(--text-color);
+        cursor: pointer;
+        margin-inline-start: 5px; /* Changement RTL->LTR */
+    }
+
+    .header-content.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-100%); /* Changement RTL->LTR */
+    }
+
+    .search-container { 
+        position: absolute; width: calc(100% - 40px); height: 45px; border-radius: 12px; 
+        background: var(--bg-color); display: flex; align-items: center; 
+        opacity: 0; 
+        pointer-events: none; 
+        transition: all 0.3s ease-in-out; 
+        transform: translateX(100%); /* Changement RTL->LTR */
+    }
+   
+    .search-container.active { 
+        opacity: 1; 
+        pointer-events: auto; 
+        box-shadow: inset 4px 4px 8px var(--dark-shadow), inset -4px -4px 8px var(--light-shadow); 
+        transform: translateX(0); 
+    }
+   
+    #search-box { 
+        flex-grow: 1; height: 100%; padding: 0 10px; font-size: 16px; 
+        border: none; outline: none; background: transparent; color: var(--text-color);
+    }
+    
+    .search-icon { 
+        margin-inline-end: 10px; color: #999; font-size: 24px; /* Changement RTL->LTR margin */
+    }
+
+    /* --- Style de l'indicateur de chargement (Recherche) --- */
+    #search-loader {
+        font-size: 20px;
+        color: var(--main-color);
+        margin-inline-start: 10px; /* Changement RTL->LTR margin */
+        display: none; /* Masqué par défaut */
+    }
+
+
+    /* --- 4. Structure des pages (pour le swipe) --- */
+    #main-content {
+        height: calc(100vh - 130px);
+        overflow-y: scroll;
+        overflow-x: hidden;
+        width: 100vw;
+        touch-action: pan-y;
+        position: relative; 
+    }
+
+    #page-wrapper {
+        width: 100%;
+        height: 100%;
+        position: relative; 
+        transition: none; 
+      
+    }
+
+    .page {
+        width: 100%; 
+        height: 100%; 
+        padding: 20px;
+        position: absolute; 
+        top: 0;
+        left: 0; /* Changement RTL->LTR */
+        background-color: var(--bg-color);
+        overflow-y: scroll; 
+        
+        transform: translateX(100%); 
+        transition: transform 0.3s ease-in-out; 
+        display: block; 
+    }
+
+    .page.active {
+        z-index: 1;
+        transform: translateX(0); 
+    }
+
+    /* --- 5. Styles des cartes et message de chargement --- */
+    .card { padding: 15px; margin-top:20; margin-bottom: 15px; display: flex; align-items: center; cursor: pointer; }
+    .card i { font-size: 24px; color: var(--main-color); margin-inline-end: 15px; }
+    .card-details h3 { 
+        margin: 0 0 5px 0; font-size: 1.1em; font-weight: 600; 
+        font-family: 'Roboto', 'Cairo', sans-serif; 
+    }
+    .card-details p { font-size: 0.9em; color: #666; }
+
+    /* Style message de chargement au centre */
+    #loading-message {
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%); 
+        font-size: 1.2em;
+        font-weight: bold;
+        color: var(--main-color);
+        text-align: center;
+    }
+
+    #loading-message i {
+        font-size: 48px !important; 
+        display: block; 
+        margin-bottom: 10px;
+    }
+
+    /* --- Indicateur de chargement bas (Scroll infini) --- */
+    #bottom-loader {
+        text-align: center;
+        padding: 15px 0;
+        color: var(--main-color);
+        font-weight: bold;
+        display: none;
+    }
+    #bottom-loader i {
+        font-size: 24px !important;
+        margin-inline-end: 10px;
+    }
+
+
+    /* --- 6. Style du Modal --- */
+    #drug-details-modal #modal-content {
+        background: var(--bg-color);
+        box-shadow: 2px 2px 5px lch(23 2.14 18.58 / 0.31);
+        border-radius: 18px;
+        padding: 20px;
+        width: 95%; 
+        max-width: 600px; 
+        max-height: 90vh; 
+        overflow-y: auto;
+    }
+
+    /* --- 7. Bouton Retour en haut --- */
+    #scroll-to-top {
+        position: fixed; bottom: 75px; right: 20px; width: 55px; height: 55px;
+        border: none; cursor: pointer; z-index: 90; font-size: 24px;
+        color: var(--main-color); background: var(--bg-color); border-radius: 50%; 
+        box-shadow: 
+            8px 8px 16px var(--dark-shadow),
+            -8px -8px 16px var(--light-shadow);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease-in-out;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    #scroll-to-top:active {
+        box-shadow: 
+            inset 6px 6px 12px var(--dark-shadow),
+            inset -6px -6px 12px var(--light-shadow);
+    }
+
+    #scroll-to-top > i { display: none; }
+
+    .icon-circle {
+        width: 45px; height: 45px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 
+            inset 4px 4px 8px var(--dark-shadow),
+            inset -4px -4px 8px var(--light-shadow);
+        background: var(--bg-color); color: var(--main-color);
+        font-size: 16px; transition: all 0.2s ease;
+    }
+
+    #scroll-to-top:active .icon-circle {
+        box-shadow: 
+            4px 4px 8px var(--dark-shadow),
+            -4px -4px 8px var(--light-shadow);
+    }
+
+    /* --- 8. Barre de navigation inférieure --- */
+    #bottom-navbar { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; display: flex; justify-content: space-around; align-items: center; background-color: var(--bg-color); border-top: 1px solid var(--dark-shadow); z-index: 100; }
+    .nav-item { width: 33.33%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: var(--text-color); font-size: 0.75em; transition: color 0.3s; }
+    .nav-item i { font-size: 28px; margin-bottom: 3px; }
+    .nav-item.active { color: var(--main-color); font-weight: bold; }
+
+  
+   #scanner-page {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh; /* تحديد ارتفاع الـ div */
+            width: 100%; /* لتحديد عرض الـ div */
+        }
+     img {
+            width: 100px; /* تحديد عرض الصورة */
+            height: auto; /* الحفاظ على النسبة الأصلية للصورة */
+            margin-bottom: 20px; /* مسافة بين الصورة والزر */
+        }
+</style>
+</head>
+<body>
+
+<header id="search-header">
+<div id="header-content" class="header-content">
+<h1 id="header-title"></h1>
+<i class='bx bx-search-alt-2' id="open-search-icon"></i>
+</div>
+<div id="search-bar" class="search-container">
+<i class='bx bx-search search-icon' style="margin-inline-start: 10px; margin-inline-end: 0;"></i>
+<input type="text" id="search-box" placeholder="Rechercher un médicament..." />
+<i class='bx bx-loader bx-spin' id="search-loader" style="display: none;"></i>
+<i class='bx bx-x search-icon' id="close-search" style="font-weight:bold;margin-inline-start: 10px; cursor: pointer;"></i>
+</div>
+</header>
+
+<div id="main-content">
+<div id="page-wrapper">
+
+ 
+
+  
+<div id="cards-page" class="page active" data-index="0" data-title="Médicaments au Maroc" style="position: relative;">
+  
+   <i id="hand-icon" class='bx bxs-hand-up bx-fade-up' style="position: absolute;z-index:102;top: 15px; right: 12px; font-size: 40px; color: #4CAF50;"></i>
+  
+        <p id="loading-message" style="display: block;white-space:nowrap">
+            <i class='bx bx-loader bx-spin' style="color:#444;"></i> 
+            Chargement des données... 
+        </p>
+    </div>
+ 
+  
+  
+    <div id="scanner-page" class="page" data-index="1" data-title="Scanner">
+        <h2 style="margin-bottom:20px;text-align:center"><i class='bx bx-scan'></i> Scan QR Code</h2>
+        <p style="margin-bottom: 20px; color: #666; text-align:center;">Page du scan Qr Code pour identifier le nom du médicament.</p>
+      
+ <img src="https://qrscanner.net/build/images/waiting.svg" alt="Placeholder Image">     
+      
+         <a href="go:QR" class="neumorphic" style=" display: flex; align-items: center; justify-content: center; text-decoration:none;height: 50px; width:150px;padding: 20px; text-align:center;">
+            <i class='bx bx-camera' style="font-size: 40px; color: #ccc;text-align:center"></i>
+        </a>
+    </div>
+
+    <div id="settings-page" class="page" data-index="2" data-title="Paramètres">
+        <h2></i> </h2>
+        <p style="margin-bottom: 20px; color: #666;"></p>
+        
+       <div class="card neumorphic" id="themeToggle">
+            <i class='bx bx-brightness-half' id="themeIcon"></i>
+            <div class="card-details">
+                <h3 id="themeTitle">Mode Sombre</h3>
+                <p id="themeText">Activer le mode sombre neumorphic.</p>
+            </div>
+        </div>
+
+        <div class="card neumorphic">
+            <i class='bx bx-bell'></i>
+            <div class="card-details">
+                <h3>Notifications</h3>
+                <p>0</p>
+            </div>
+        </div>
+        
+         <div class="card neumorphic">
+            <i class='bx bx-envelope'></i>
+            <div class="card-details">
+                <h3>Contactez-nous</h3>
+                <p>Medicaments@gmail.com</p>
+            </div>
+        </div>
+        
+         <div class="card neumorphic">
+            <i class='bx bx-info-circle'></i>
+            <div class="card-details">
+                <h3>À propos</h3>
+                <p>Version 5.1.0</p>
+            </div>
+        </div>
+        
+    </div>
+</div>
+</div>
+
+<button id="scroll-to-top" class="neumorphic">
+<i class='bx bx-arrow-to-top'></i>
+<div class="icon-circle neumorphic-inset">
+<i class='bx bxs-up-arrow'></i>
+</div>
+</button>
+
+<div id="drug-details-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 150; display: none; justify-content: center; align-items: center;">
+<div id="modal-content" class="neumorphic">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+<i class='bx bx-x' id="close-modal" style="font-size: 30px; cursor: pointer; color: var(--text-color);"></i>
+<h3 id="modal-title" style="color: var(--main-color);"></h3>
+</div>
+<div id="drug-details-table" style="font-size: 0.9em;">
+</div>
+</div>
+</div>
+
+<nav id="bottom-navbar">
+
+
+<a href="#" class="nav-item active" data-page="cards" data-index="0">
+    <i class='bx bxs-dashboard'></i>
+    <span>Médicaments</span>
+</a>
+
+<a href="#" class="nav-item" data-page="scanner" data-index="1">
+    <i class='bx bx-qr-scan'></i>
+    <span>Scan Qr Code</span>
+</a>
+
+<a href="#" class="nav-item" data-page="settings" data-index="2">
+    <i class='bx bx-cog'></i>
+    <span>Paramètres</span>
+</a>
+</nav>
+
+
+
+<script>
+
+if (localStorage.getItem('hand_shown') === 'yes') {
+    document.getElementById('hand-icon').style.display = 'none';
+} else {
+    
+    setTimeout(() => {
+        document.getElementById('hand-icon').style.display = 'none';
+        localStorage.setItem('hand_shown', 'yes');
+    }, 4000); 
+   }
+</script>
+
+
+<script>
+const scrollToTopButton = document.getElementById('scroll-to-top');
+const navItems = document.querySelectorAll('.nav-item');
+const mainContent = document.getElementById('main-content');
+const headerContent = document.getElementById('header-content');
+const headerTitle = document.getElementById('header-title');
+const searchBar = document.getElementById('search-bar');
+const searchInput = document.getElementById('search-box');
+const closeSearchButton = document.getElementById('close-search');
+const openSearchIcon = document.getElementById('open-search-icon');
+const allPages = document.querySelectorAll('.page');
+const cardsPage = document.getElementById('cards-page');
+const loadingMessage = document.getElementById('loading-message');
+const searchLoader = document.getElementById('search-loader');
+
+
+// Modal elements
+const drugDetailsModal = document.getElementById('drug-details-modal');
+const modalTitle = document.getElementById('modal-title');
+const drugDetailsTable = document.getElementById('drug-details-table');
+const closeModalButton = document.getElementById('close-modal');
+
+// --- variables de chargement infini et données ---
+let touchStartX = 0;
+let touchStartY = 0;
+let touchDist = 0;
+let currentTabIndex = 0;
+const SWIPE_THRESHOLD = 0.3;
+let isSwiping = false;
+let activePage = null;
+let nextPage = null;
+let containerWidth = 0;
+let lastScrollTop = 0;
+
+const SCROLL_DIRECTION_THRESHOLD = 5;
+
+// ** Variables de contrôle du chargement infini **
+let allDrugData = [];
+let currentFilteredData = [];
+let currentDisplayCount = 0;
+const INITIAL_LOAD_COUNT = 100;
+const LOAD_INCREMENT = 100;
+let isLoadingMore = false;
+
+const CACHE_KEY = 'drugData_2014';
+
+// --- Fonction Debounce ---
+function debounce(func, delay) {
+let timeoutId;
+return function(...args) {
+searchLoader.style.display = 'inline-block';
+
+clearTimeout(timeoutId);
+timeoutId = setTimeout(() => {
+func.apply(this, args);
+searchLoader.style.display = 'none';
+}, delay);
+};
+}
+
+// --- Fonction de tri alphabétique ---
+function sortDrugs(data) {
+return data.sort((a, b) => {
+const nameA = (a.NOM || '').toLowerCase();
+const nameB = (b.NOM || '').toLowerCase();
+if (nameA < nameB) return -1;
+if (nameA > nameB) return 1;
+return 0;
+});
+}
+
+// --- Fonctions principales ---
+
+async function fetchDrugData() {
+loadingMessage.style.display = 'block';
+
+const cachedData = localStorage.getItem(CACHE_KEY);
+if (cachedData) {
+try {
+allDrugData = sortDrugs(JSON.parse(cachedData));
+currentFilteredData = allDrugData;
+loadingMessage.style.display = 'none';
+currentDisplayCount = INITIAL_LOAD_COUNT;
+renderDrugCards(currentFilteredData, true);
+attachScrollListener();
+return;
+} catch (e) {
+console.error("Erreur d'analyse du cache, nouveau téléchargement.");
+localStorage.removeItem(CACHE_KEY);
+}
+}
+
+try {
+const response = await fetch('2014.json');
+
+if (!response.ok) {
+throw new Error(`Erreur HTTP ! statut : ${response.status}.`);
+}
+
+const freshData = await response.json();
+
+const sortedData = sortDrugs(freshData);
+localStorage.setItem(CACHE_KEY, JSON.stringify(sortedData));
+allDrugData = sortedData;
+currentFilteredData = allDrugData;
+
+loadingMessage.style.display = 'none';
+currentDisplayCount = INITIAL_LOAD_COUNT;
+renderDrugCards(currentFilteredData, true);
+attachScrollListener();
+
+} catch (error) {
+console.error("Erreur lors de la récupération des données :", error);
+
+loadingMessage.style.top = '37%';
+loadingMessage.style.transform = 'translate(-50%, 0)';
+loadingMessage.innerHTML = `<p style="color: #FF5733;">
+<i class='bx bx-error-circle' style="font-size: 24px;"></i>
+Échec du chargement !
+</p>`;
+}
+}
+
+function renderDrugCards(data, clearExisting = false) {
+
+const bottomLoader = document.getElementById('bottom-loader');
+if (bottomLoader) bottomLoader.remove();
+isLoadingMore = false;
+
+
+if (clearExisting) {
+let dynamicContent = cardsPage.querySelectorAll('h2, .card, p.no-results-message');
+dynamicContent.forEach(el => el.remove());
+
+if (data.length === 0 && searchInput.value.trim() !== '') {
+cardsPage.insertAdjacentHTML('beforeend', '<p class="no-results-message" style="text-align:center; padding-top: 30px; color:#999;">Aucun résultat trouvé pour votre recherche.</p>');
+return;
+}
+
+if (data.length > 0) {
+cardsPage.insertAdjacentHTML('beforeend', `<h2 style="text-align:center; padding-bottom: 30px;font-size:0.9em;">Recherchez le nom du médicament ou son code-barres</h2>`);
+}
+}
+
+const startIndex = clearExisting ? 0 : currentDisplayCount - LOAD_INCREMENT;
+const displayData = data.slice(startIndex, currentDisplayCount);
+
+let cardsHtml = '';
+
+displayData.forEach(drug => {
+const ppvValue = drug.PPV ? parseFloat(drug.PPV).toFixed(2) : 'Non disponible';
+
+cardsHtml += `
+<div class="card neumorphic" data-code="${drug.CODE}">
+<i class='bx bxs-capsule'></i>
+<div class="card-details">
+<h3>${drug.NOM || 'Nom commercial indisponible'}</h3>
+<p><strong>Forme :</strong> ${drug.PRESENTATION || 'Non spécifié'}</p>
+<p>Prix Public de Vente (PPV) : <strong>${ppvValue} DH</strong></p>
+</div>
+</div>
+`;
+});
+
+cardsPage.insertAdjacentHTML('beforeend', cardsHtml);
+
+if (currentDisplayCount < data.length) {
+cardsPage.insertAdjacentHTML('beforeend', `
+<div id="bottom-loader">
+<i class='bx bx-loader bx-spin'></i> Chargement de la suite...
+</div>
+`);
+}
+
+document.querySelectorAll('.card').forEach(card => {
+card.addEventListener('click', () => {
+const drugCode = card.getAttribute('data-code');
+const drug = allDrugData.find(d => d.CODE === drugCode);
+if (drug) {
+showDrugDetailsModal(drug);
+}
+});
+});
+}
+
+function loadMoreDrugs() {
+if (isLoadingMore || currentDisplayCount >= currentFilteredData.length) {
+return;
+}
+
+isLoadingMore = true;
+
+const nextCount = Math.min(currentDisplayCount + LOAD_INCREMENT, currentFilteredData.length);
+
+if (nextCount > currentDisplayCount) {
+currentDisplayCount = nextCount;
+setTimeout(() => {
+renderDrugCards(currentFilteredData, false);
+isLoadingMore = false;
+}, 50);
+} else {
+isLoadingMore = false;
+const bottomLoader = document.getElementById('bottom-loader');
+if (bottomLoader) bottomLoader.remove();
+}
+}
+
+
+function filterDrugs(searchTerm) {
+searchLoader.style.display = 'inline-block';
+
+if (!searchTerm) {
+currentFilteredData = allDrugData;
+currentDisplayCount = INITIAL_LOAD_COUNT;
+renderDrugCards(currentFilteredData, true);
+searchLoader.style.display = 'none';
+return;
+}
+
+const lowerCaseSearchTerm = searchTerm.toLowerCase().trim();
+
+const exactMatches = [];
+const partialMatches = [];
+
+allDrugData.forEach(drug => {
+const nom = (drug.NOM || '').toLowerCase();
+const dci1 = (drug.DCI1 || '').toLowerCase();
+const code = (drug.CODE || '').toLowerCase();
+
+if (nom.startsWith(lowerCaseSearchTerm)) {
+exactMatches.push(drug);
+}
+else if (
+nom.includes(lowerCaseSearchTerm) ||
+dci1.includes(lowerCaseSearchTerm) ||
+code.includes(lowerCaseSearchTerm)
+) {
+partialMatches.push(drug);
+}
+});
+
+const sortedExactMatches = sortDrugs(exactMatches);
+const sortedPartialMatches = sortDrugs(partialMatches.filter(drug => !exactMatches.includes(drug)));
+
+currentFilteredData = [...sortedExactMatches, ...sortedPartialMatches];
+
+currentDisplayCount = INITIAL_LOAD_COUNT;
+renderDrugCards(currentFilteredData, true);
+
+searchLoader.style.display = 'none';
+}
+
+function showDrugDetailsModal(drug) {
+modalTitle.textContent = drug.NOM || 'Détails du médicament';
+
+const formatPrice = (price) => (price && !isNaN(price)) ? `${parseFloat(price).toFixed(2)} DH` : 'Non disponible';
+
+const detailsHtml = `
+<table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Nom commercial (NOM)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.NOM || '-'}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Substance active (DCI1)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.DCI1 || '-'}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Dosage</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.DOSAGE1 || '-'} ${drug['UNITE DOSAGE1'] || ''}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Forme pharmaceutique (FORME)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.FORME || '-'}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Conditionnement (PRESENTATION)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.PRESENTATION || '-'}</td>
+</tr>
+<tr style="border-bottom: 2px solid var(--main-color);">
+<td style="padding: 8px 0; font-weight: bold; color: var(--main-color);">Prix Public de Vente (PPV)</td>
+<td style="padding: 8px 0; text-align: left; font-weight: bold; color: var(--main-color);">${formatPrice(drug.PPV)}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Code médicament (CODE)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.CODE || '-'}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Est-ce original ?</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.PRINCEPS_GENERIQUE === 'P' ? 'Princeps' : (drug.PRINCEPS_GENERIQUE === 'G' ? 'Générique' : '-')}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Prix Hospitalier (PH)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${formatPrice(drug.PH)}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Prix Base Remboursement (PRIX_BR)</strong></td>
+<td style="padding: 8px 0; text-align: left;">${formatPrice(drug.PRIX_BR)}</td>
+</tr>
+<tr style="border-bottom: 1px solid var(--dark-shadow);">
+<td style="padding: 8px 0;"><strong>Taux de remboursement</strong></td>
+<td style="padding: 8px 0; text-align: left;">${drug.TAUX_REMBOURSEMENT || '-'}</td>
+</tr>
+</table>
+`;
+
+drugDetailsTable.innerHTML = detailsHtml;
+drugDetailsModal.style.display = 'flex';
+}
+
+closeModalButton.addEventListener('click', () => {
+drugDetailsModal.style.display = 'none';
+});
+
+drugDetailsModal.addEventListener('click', (e) => {
+if (e.target === drugDetailsModal) {
+drugDetailsModal.style.display = 'none';
+}
+});
+
+
+function switchPage(newIndex, animate = true) {
+newIndex = Math.max(0, Math.min(allPages.length - 1, newIndex));
+
+if (newIndex === currentTabIndex && animate) {
+activePage.style.transform = `translateX(0)`;
+if (nextPage) nextPage.style.transform = `${nextPage.getAttribute('data-initial-pos')}`;
+return;
+}
+
+currentTabIndex = newIndex;
+
+const newActivePage = document.querySelector(`.page[data-index="${newIndex}"]`);
+
+allPages.forEach(page => {
+page.classList.remove('active', 'next');
+page.style.transform = `translateX(100%)`;
+page.style.transition = 'transform 0.3s ease-in-out';
+page.removeAttribute('data-initial-pos');
+});
+
+newActivePage.classList.add('active');
+newActivePage.style.transform = `translateX(0)`;
+
+navItems.forEach(nav => nav.classList.remove('active'));
+document.querySelector(`.nav-item[data-index="${newIndex}"]`).classList.add('active');
+
+const title = newActivePage.getAttribute('data-title');
+headerTitle.textContent = title;
+toggleSearch(false);
+
+if (newIndex === 0) {
+openSearchIcon.style.display = 'block';
+attachScrollListener();
+} else {
+openSearchIcon.style.display = 'none';
+}
+
+newActivePage.scrollTop = 0;
+}
+
+
+mainContent.addEventListener('touchstart', (e) => {
+if (searchBar.classList.contains('active')) return;
+containerWidth = mainContent.offsetWidth;
+touchStartX = e.touches[0].clientX;
+touchStartY = e.touches[0].clientY;
+touchDist = 0;
+isSwiping = false;
+activePage = document.querySelector('.page.active');
+});
+
+mainContent.addEventListener('touchmove', (e) => {
+if (searchBar.classList.contains('active') || !activePage) return;
+const touchDx = e.touches[0].clientX - touchStartX;
+const touchDy = e.touches[0].clientY - touchStartY;
+if (!isSwiping) {
+if (Math.abs(touchDy) > 10 && Math.abs(touchDy) > Math.abs(touchDx)) {
+return;
+} else if (Math.abs(touchDx) > 10) {
+isSwiping = true; e.preventDefault();
+const nextIndex = touchDx > 0 ? currentTabIndex - 1 : currentTabIndex + 1; /* Inversion pour LTR */
+nextPage = document.querySelector(`.page[data-index="${nextIndex}"]`);
+if (nextPage) {
+const startPosition = touchDx > 0 ? -containerWidth : containerWidth;
+nextPage.classList.add('next'); nextPage.style.transition = 'none';
+nextPage.style.transform = `translateX(${startPosition}px)`;
+nextPage.setAttribute('data-initial-pos', `translateX(${startPosition}px)`);
+activePage.style.transition = 'none';
+} else { isSwiping = false; return; }
+} else { return; }
+}
+if (isSwiping && activePage) {
+e.preventDefault(); touchDist = touchDx;
+activePage.style.transform = `translateX(${touchDist}px)`;
+if (nextPage) {
+const initialOffset = touchDist > 0 ? -containerWidth : containerWidth;
+nextPage.style.transform = `translateX(${initialOffset + touchDist}px)`;
+}
+}
+});
+
+mainContent.addEventListener('touchend', () => {
+if (!isSwiping || !activePage) return;
+let targetIndex = currentTabIndex;
+const movedDistance = Math.abs(touchDist);
+if (movedDistance > (containerWidth * SWIPE_THRESHOLD)) {
+targetIndex = touchDist > 0 ? currentTabIndex - 1 : currentTabIndex + 1; /* Inversion pour LTR */
+} else { targetIndex = currentTabIndex; }
+targetIndex = Math.max(0, Math.min(allPages.length - 1, targetIndex));
+
+activePage.style.transition = 'transform 0.3s ease-in-out';
+if (nextPage) nextPage.style.transition = 'transform 0.3s ease-in-out';
+
+if (targetIndex !== currentTabIndex) {
+const transitionDirection = targetIndex > currentTabIndex ? -containerWidth : containerWidth; /* Inversion pour LTR */
+activePage.style.transform = `translateX(${transitionDirection}px)`;
+if (nextPage) nextPage.style.transform = `translateX(0)`;
+setTimeout(() => { switchPage(targetIndex, false); }, 300);
+} else {
+activePage.style.transform = `translateX(0)`;
+if (nextPage) { nextPage.style.transform = `${nextPage.getAttribute('data-initial-pos')}`; }
+setTimeout(() => { if(nextPage) nextPage.classList.remove('next'); }, 300);
+}
+touchDist = 0; isSwiping = false; activePage = null; nextPage = null;
+});
+
+navItems.forEach(item => {
+item.addEventListener('click', (e) => {
+e.preventDefault();
+const index = parseInt(item.getAttribute('data-index'));
+if (index === currentTabIndex) return;
+
+const oldIndex = currentTabIndex;
+const newIndex = index;
+const direction = newIndex > oldIndex ? 1 : -1; /* Inversion pour LTR */
+activePage = document.querySelector('.page.active');
+nextPage = document.querySelector(`.page[data-index="${newIndex}"]`);
+if (!activePage || !nextPage) return;
+
+const startPosition = direction * mainContent.offsetWidth;
+nextPage.classList.add('next'); nextPage.style.transition = 'none';
+nextPage.style.transform = `translateX(${startPosition}px)`;
+activePage.style.transition = 'none';
+
+setTimeout(() => {
+activePage.style.transition = 'transform 0.3s ease-in-out';
+nextPage.style.transition = 'transform 0.3s ease-in-out';
+activePage.style.transform = `translateX(${-direction * mainContent.offsetWidth}px)`;
+nextPage.style.transform = `translateX(0)`;
+}, 10);
+
+setTimeout(() => { switchPage(newIndex, false); }, 310);
+});
+});
+
+
+
+
+function toggleSearch(expand) {
+if (currentTabIndex !== 0) {
+searchBar.classList.remove('active');
+headerContent.classList.remove('hidden');
+return;
+}
+if (expand) {
+headerContent.classList.add('hidden');
+searchBar.classList.add('active');
+searchInput.focus();
+} else {
+headerContent.classList.remove('hidden');
+searchBar.classList.remove('active');
+searchInput.value = '';
+searchInput.blur();
+
+currentFilteredData = allDrugData;
+currentDisplayCount = INITIAL_LOAD_COUNT;
+renderDrugCards(currentFilteredData, true);
+
+const cardsPage = document.getElementById('cards-page');
+if (cardsPage) {
+cardsPage.scrollTo({ top: 0, behavior: 'smooth' });
+}
+}
+}
+
+function checkScrollForLoad() {
+const page = document.querySelector('.page.active');
+
+if (page && page.id === 'cards-page') {
+const scrollableHeight = page.scrollHeight;
+const visibleHeight = page.clientHeight;
+const scrolledFromTop = page.scrollTop;
+
+const st = scrolledFromTop;
+
+const isScrollingDown = st > lastScrollTop;
+const isScrollingUp = st < lastScrollTop;
+
+if (st <= 200) {
+scrollToTopButton.style.opacity = '0';
+scrollToTopButton.style.pointerEvents = 'none';
+} else if (isScrollingDown && Math.abs(lastScrollTop - st) > SCROLL_DIRECTION_THRESHOLD) {
+scrollToTopButton.style.opacity = '1';
+scrollToTopButton.style.pointerEvents = 'auto';
+} else if (isScrollingUp && Math.abs(lastScrollTop - st) > SCROLL_DIRECTION_THRESHOLD) {
+scrollToTopButton.style.opacity = '0';
+scrollToTopButton.style.pointerEvents = 'none';
+}
+
+lastScrollTop = st <= 0 ? 0 : st;
+
+if (scrollableHeight - scrolledFromTop - visibleHeight < 200) {
+loadMoreDrugs();
+}
+} else {
+scrollToTopButton.style.opacity = '0';
+scrollToTopButton.style.pointerEvents = 'none';
+lastScrollTop = 0;
+}
+}
+
+
+function attachScrollListener() {
+allPages.forEach(page => { page.removeEventListener('scroll', checkScrollForLoad); });
+const cardsPageElement = document.getElementById('cards-page');
+if(cardsPageElement) { cardsPageElement.addEventListener('scroll', checkScrollForLoad); }
+}
+
+
+scrollToTopButton.addEventListener('click', () => {
+const activePageElement = document.querySelector('.page.active');
+if (activePageElement) { activePageElement.scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+const debouncedFilterDrugs = debounce(filterDrugs, 300);
+
+searchInput.addEventListener('input', () => { debouncedFilterDrugs(searchInput.value); });
+openSearchIcon.addEventListener('click', () => { if (currentTabIndex === 0) { toggleSearch(true); } });
+closeSearchButton.addEventListener('click', (e) => { e.stopPropagation(); toggleSearch(false); });
+searchBar.addEventListener('click', (e) => e.stopPropagation());
+
+
+document.addEventListener('DOMContentLoaded', () => {
+containerWidth = mainContent.offsetWidth;
+fetchDrugData();
+switchPage(0, false);
+});
+
+const originalSwitchPage = switchPage;
+switchPage = function(newIndex, animate = true) {
+originalSwitchPage(newIndex, animate);
+if (newIndex === 0) {
+attachScrollListener();
+}
+}
+</script>
+
+<script>
+const themeToggle = document.getElementById("themeToggle");
+const themeTitle = document.getElementById("themeTitle");
+const themeText = document.getElementById("themeText");
+const themeIcon = document.getElementById("themeIcon");
+
+const savedMode = localStorage.getItem("darkMode");
+if (savedMode === "enabled") {
+document.body.classList.add("dark-mode");
+updateThemeText(true);
+} else {
+updateThemeText(false);
+}
+
+themeToggle.addEventListener("click", () => {
+document.body.classList.toggle("dark-mode");
+
+const isDark = document.body.classList.contains("dark-mode");
+
+localStorage.setItem("darkMode", isDark ? "enabled" : "disabled");
+
+updateThemeText(isDark);
+});
+
+function updateThemeText(isDark) {
+if (isDark) {
+themeTitle.textContent = "Mode Clair";
+themeText.textContent = "Retour au mode clair";
+themeIcon.className = "bx bx-sun";
+} else {
+themeTitle.textContent = "Mode Sombre";
+themeText.textContent = "Activer le mode sombre";
+themeIcon.className = "bx bx-moon";
+}
+}
+</script>
+
+</body>
+</html>
